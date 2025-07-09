@@ -8,7 +8,7 @@ from .connector import get_connector
 from .version import __version__
 
 
-TIME_OFFSET = 120  # seconds for token to expire before actual expiration
+TIME_OFFSET = 300  # seconds for token to expire before actual expiration
 IS_URL = re.compile(r'^https?\:\/\/', re.IGNORECASE)
 USER_AGENT = f'InfraSonarVeeamProbe/{__version__}'
 TOKEN_CACHE: dict[tuple[str, str], tuple[float, str]] = {}
@@ -70,6 +70,7 @@ async def get_token(api_url: str,
                 password=password,
                 disable_antiforgery_token=disable_antiforgery_token,
                 verify_ssl=verify_ssl)
+        logging.debug(f'Token expires in {expires_in} seconds')
         expire_ts = now + expires_in - TIME_OFFSET
         TOKEN_CACHE[key] = (expire_ts, token)
 
