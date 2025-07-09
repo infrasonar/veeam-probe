@@ -1,11 +1,13 @@
 from libprobe.probe import Probe
-from lib.check.backup_repositories import check_backup_repositories
+from lib.check.jobs import check_jobs
+from lib.check.health import check_health
 from lib.version import __version__ as version
 
 
 if __name__ == '__main__':
     checks = {
-        'BackupRepositories': check_backup_repositories,
+        'jobs': check_jobs,
+        'health': check_health,
     }
 
     probe = Probe("veeam", version, checks)

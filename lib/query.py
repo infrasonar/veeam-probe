@@ -2,6 +2,7 @@ import aiohttp
 import re
 import time
 import logging
+from typing import Any
 from libprobe.asset import Asset
 from .connector import get_connector
 from .version import __version__
@@ -75,7 +76,7 @@ async def get_token(api_url: str,
     return token
 
 
-async def query(
+async def _query(
         asset: Asset,
         asset_config: dict,
         check_config: dict,
@@ -124,11 +125,11 @@ async def query(
     if not IS_URL.match(address):
         address = f'https://{address}'
 
-    api_url = f'{address}:{port}/{api_version}'
+    api_url = f'{address}:{port}'
     logging.debug(f'Using API Url: {api_url}')
 
     token = await get_token(
-        api_url=api_url,
+        api_url=f'{api_url}/{api_version}',
         grant_type=grant_type,
         client_id=client_id,
         client_secret=client_secret,
@@ -137,13 +138,68 @@ async def query(
         disable_antiforgery_token=disable_antiforgery_token,
         verify_ssl=verify_ssl)
 
+    return api_url, api_version, token, verify_ssl
+
+
+async def query_multi(
+        asset: Asset,
+        asset_config: dict,
+        check_config: dict,
+        req: str) -> list[dict[str, Any]]:
+    api_url, api_version, token, verify_ssl = await _query(
+        asset,
+        asset_config,
+        check_config,
+        req)
+
     headers = {
         'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json',
     }
 
     assert req.startswith('/')
-    url = f'{api_url}{req}'
+    url = f'{api_url}/{api_version}{req}'
+
+    results = []
+
+    while True:
+        async with aiohttp.ClientSession(connector=get_connector()) as session:
+            async with session.get(
+                    url,
+                    headers=headers,
+                    ssl=verify_ssl) as resp:
+                resp.raise_for_status()
+                data = await resp.json()
+
+        results.extend(data.get('results', []))
+
+        next = data.get('_links', {}).get('next', {}).get('href')
+        if not next:
+            break
+
+        url = f'{api_url}{next}'
+
+    return results
+
+
+async def query(
+        asset: Asset,
+        asset_config: dict,
+        check_config: dict,
+        req: str) -> dict[str, Any]:
+    api_url, api_version, token, verify_ssl = await _query(
+        asset,
+        asset_config,
+        check_config,
+        req)
+
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+    }
+
+    assert req.startswith('/')
+    url = f'{api_url}/{api_version}{req}'
 
     async with aiohttp.ClientSession(connector=get_connector()) as session:
         async with session.get(
@@ -152,4 +208,5 @@ async def query(
                 ssl=verify_ssl) as resp:
             resp.raise_for_status()
             data = await resp.json()
-            return data
+
+    return data

@@ -43,14 +43,19 @@ docker build -t veeam-probe . --no-cache
 ## Dry run
 
 Available checks:
-- `xxx`
+- `health`
+- `jobs`
 
 Create a yaml file, for example _(test.yaml)_:
 
 ```yaml
 asset:
-  name: "backups.foo.local"
-  check: "xxx"
+  name: "backup.foo.local"
+  check: "health"
+  config:
+    verifySSL: false
+    port: 4443
+    apiVersion: v8
 ```
 
 Run the probe with the `DRY_RUN` environment variable set the the yaml file above.
