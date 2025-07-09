@@ -17,7 +17,13 @@ async def check_jobs(
             'displayName': result['name'],  # str (name)
             'description': result['description'],  # str
             'backupType': result['backupType'],  # str
-            'schedulePolicy': result['schedulePolicy'],  # str
+            'schedulePolicyType': result['schedulePolicy']['type'],  # str
+            'schedulePolicyScheduleEnabled':
+                result['schedulePolicy']['scheduleEnabled'],  # bool
+            'schedulePolicyBackupWindowEnabled':
+                result['schedulePolicy']['backupWindowEnabled'],  # bool
+            'schedulePolicyRetryEnabled':
+                result['schedulePolicy']['retryEnabled'],  # bool
             'organizationId': result['organizationId'],  # str
             'repositoryId': result['repositoryId'],  # str -> ref
             'isEnabled': result['isEnabled'],  # bool
