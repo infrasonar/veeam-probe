@@ -15,6 +15,7 @@ USER_AGENT = f'InfraSonarVeeamProbe/{__version__}'
 TOKEN_CACHE: dict[tuple[str, str], tuple[float, str]] = {}
 LOCK = asyncio.Lock()
 
+
 async def get_new_token(api_url: str,
                         grant_type: str,
                         client_id: str,
