@@ -19,15 +19,19 @@ Variable            | Default                        | Description
 `LOG_COLORIZED`     | `0`                            | Log using colors (`0`=disabled, `1`=enabled).
 `LOG_FMT`           | `%y%m%d %H:%M:%S`              | Log format prefix.
 
+## Config
 
-## API key
-
-The `secret` will be used as `X-Cisco-Meraki-API-Key` in the header for HTTP calls.
+Only Grant Type `password` is currently supported.
 
 ```yaml
 veeam:
   config:
-    secret: 'xxxxxxxxxxx'
+    grantType: password
+    clientId: 01234567-0123-0123-0123-0123456789ab
+    secret: xxxxxxxxxxx
+    username: my_user_name
+    password: xxxxxxxxxxxx
+    disable_antiforgery_token: true
 ```
 
 ## Docker build
@@ -54,4 +58,3 @@ Run the probe with the `DRY_RUN` environment variable set the the yaml file abov
 ```
 DRY_RUN=test.yaml python main.py
 ```
-# veeam-probe
