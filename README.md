@@ -31,7 +31,7 @@ veeam:
     secret: xxxxxxxxxxx
     username: my_user_name
     password: xxxxxxxxxxxx
-    disable_antiforgery_token: true
+    disableAntiforgeryToken: true
 ```
 
 ## Docker build

@@ -87,7 +87,7 @@ async def _query(
     username = asset_config.get('username')
     password = asset_config.get('password')
     disable_antiforgery_token = \
-        asset_config.get('disable_antiforgery_token', True)
+        asset_config.get('disableAntiforgeryToken', True)
 
     assert grant_type == 'password', (
         'Only Grant Type `password` is supported, '
@@ -95,12 +95,11 @@ async def _query(
 
     assert client_id, (
         'Client ID is missing, '
-        'please provide the Client ID as `client_id` in the appliance config')
+        'please provide the Client ID as `clientId` in the appliance config')
 
     assert client_secret, (
         'Client Secret is missing, '
-        'please provide the Client Secret as `client_secret` in the '
-        'appliance config')
+        'please provide the Client Secret as `secret` in the appliance config')
 
     assert username, (
         'Username missing, '
@@ -111,7 +110,7 @@ async def _query(
         'please provide the Password as `password` in the appliance config')
 
     assert isinstance(disable_antiforgery_token, bool), (
-        'Property `disable_antiforgery_token` must be a boolean if provided '
+        'Property `disableAntiforgeryToken` must be a boolean if provided '
         'in the appliance config')
 
     address = check_config.get('address') or asset.name
