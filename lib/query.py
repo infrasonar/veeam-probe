@@ -2,6 +2,7 @@ import aiohttp
 import re
 import time
 import logging
+import asyncio
 from typing import Any
 from libprobe.asset import Asset
 from .connector import get_connector
@@ -12,7 +13,7 @@ TIME_OFFSET = 300  # seconds for token to expire before actual expiration
 IS_URL = re.compile(r'^https?\:\/\/', re.IGNORECASE)
 USER_AGENT = f'InfraSonarVeeamProbe/{__version__}'
 TOKEN_CACHE: dict[tuple[str, str], tuple[float, str]] = {}
-
+LOCK = asyncio.Lock()
 
 async def get_new_token(api_url: str,
                         grant_type: str,
@@ -55,33 +56,38 @@ async def get_token(api_url: str,
                     username: str,
                     password: str,
                     disable_antiforgery_token: bool,
-                    verify_ssl: bool) -> str:
-    key = (client_id, username)
-    now = time.time()
-    expire_ts, token = TOKEN_CACHE.get(key, (0.0, ''))
-    if now > expire_ts:
-        expires_in, token = \
-            await get_new_token(
-                api_url=api_url,
-                grant_type=grant_type,
-                client_id=client_id,
-                client_secret=client_secret,
-                username=username,
-                password=password,
-                disable_antiforgery_token=disable_antiforgery_token,
-                verify_ssl=verify_ssl)
-        logging.debug(f'Token expires in {expires_in} seconds')
-        expire_ts = now + expires_in - TIME_OFFSET
-        TOKEN_CACHE[key] = (expire_ts, token)
+                    verify_ssl: bool,
+                    force_new_token: bool) -> tuple[str, bool]:
+    async with LOCK:
+        key = (client_id, username)
+        now = time.time()
+        expire_ts, token = TOKEN_CACHE.get(key, (0.0, ''))
+        is_new = False
+        if force_new_token or now > expire_ts:
+            expires_in, token = \
+                await get_new_token(
+                    api_url=api_url,
+                    grant_type=grant_type,
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    username=username,
+                    password=password,
+                    disable_antiforgery_token=disable_antiforgery_token,
+                    verify_ssl=verify_ssl)
+            logging.debug(f'Token expires in {expires_in} seconds')
+            expire_ts = now + expires_in - TIME_OFFSET
+            TOKEN_CACHE[key] = (expire_ts, token)
+            is_new = True
 
-    return token
+    return token, is_new
 
 
 async def _query(
         asset: Asset,
         asset_config: dict,
         check_config: dict,
-        req: str):
+        req: str,
+        force_new_token: bool) -> tuple[str, str, str, bool, bool]:
     grant_type = asset_config.get('grantType', 'password')
     client_id = asset_config.get('clientId')
     client_secret = asset_config.get('secret')
@@ -128,7 +134,7 @@ async def _query(
     api_url = f'{address}:{port}'
     logging.debug(f'Using API Url: {api_url}')
 
-    token = await get_token(
+    token, is_new = await get_token(
         api_url=f'{api_url}/{api_version}',
         grant_type=grant_type,
         client_id=client_id,
@@ -136,21 +142,24 @@ async def _query(
         username=username,
         password=password,
         disable_antiforgery_token=disable_antiforgery_token,
-        verify_ssl=verify_ssl)
+        verify_ssl=verify_ssl,
+        force_new_token=force_new_token)
 
-    return api_url, api_version, token, verify_ssl
+    return api_url, api_version, token, verify_ssl, is_new
 
 
 async def query_multi(
         asset: Asset,
         asset_config: dict,
         check_config: dict,
-        req: str) -> list[dict[str, Any]]:
-    api_url, api_version, token, verify_ssl = await _query(
+        req: str,
+        force_new_token: bool = False) -> list[dict[str, Any]]:
+    api_url, api_version, token, verify_ssl, is_new = await _query(
         asset,
         asset_config,
         check_config,
-        req)
+        req,
+        force_new_token)
 
     headers = {
         'Authorization': f'Bearer {token}',
@@ -168,6 +177,15 @@ async def query_multi(
                     url,
                     headers=headers,
                     ssl=verify_ssl) as resp:
+                if is_new is False and resp.status == 401:
+                    # Retry when using an old token and 401
+                    return await query_multi(
+                        asset=asset,
+                        asset_config=asset_config,
+                        check_config=check_config,
+                        req=req,
+                        force_new_token=True)
+
                 resp.raise_for_status()
                 data = await resp.json()
 
@@ -186,12 +204,14 @@ async def query(
         asset: Asset,
         asset_config: dict,
         check_config: dict,
-        req: str) -> dict[str, Any]:
-    api_url, api_version, token, verify_ssl = await _query(
+        req: str,
+        force_new_token: bool = False) -> dict[str, Any]:
+    api_url, api_version, token, verify_ssl, is_new = await _query(
         asset,
         asset_config,
         check_config,
-        req)
+        req,
+        force_new_token)
 
     headers = {
         'Authorization': f'Bearer {token}',
@@ -206,6 +226,15 @@ async def query(
                 url,
                 headers=headers,
                 ssl=verify_ssl) as resp:
+            if is_new is False and resp.status == 401:
+                # Retry when using an old token and 401
+                return await query(
+                    asset=asset,
+                    asset_config=asset_config,
+                    check_config=check_config,
+                    req=req,
+                    force_new_token=True)
+
             resp.raise_for_status()
             data = await resp.json()
 
