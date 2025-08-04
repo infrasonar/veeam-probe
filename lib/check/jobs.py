@@ -9,7 +9,7 @@ async def check_jobs(
         asset_config: dict,
         config: dict) -> dict[str, list[dict[str, Any]]]:
     req = '/jobs'
-    results = await query_multi(asset, asset_config, asset_config, req)
+    results = await query_multi(asset, asset_config, config, req)
     jobs = []
     for result in results:
         jobs.append({
@@ -35,7 +35,7 @@ async def check_jobs(
         })
 
     req = '/backupRepositories'
-    results = await query_multi(asset, asset_config, asset_config, req)
+    results = await query_multi(asset, asset_config, config, req)
     backup_repositories = []
     for result in results:
         backup_repositories.append({
