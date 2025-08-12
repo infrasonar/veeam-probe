@@ -8,7 +8,7 @@ async def check_health(
         asset_config: dict,
         config: dict) -> dict[str, list[dict[str, Any]]]:
     req = '/health'
-    resp = await query(asset, asset_config, asset_config, req)
+    resp = await query(asset, asset_config, config, req)
     entries = resp.get('entries', {})
     configuration_db = entries.get('configurationDb', {}).get('status')
     nats = entries.get('nats', {}).get('status')
