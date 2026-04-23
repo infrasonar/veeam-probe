@@ -6,6 +6,7 @@ from ..utils import str_to_timestamp
 
 class CheckJobs(Check):
     key = 'jobs'
+    unchanged_eol = 14400
 
     @staticmethod
     async def run(asset: Asset, local_config: dict, config: dict) -> dict:
