@@ -85,17 +85,17 @@ async def get_token(api_url: str,
 
 async def _query(
         asset: Asset,
-        asset_config: dict,
-        check_config: dict,
+        local_config: dict,
+        config: dict,
         req: str,
         force_new_token: bool) -> tuple[str, str, str, bool, bool]:
-    grant_type = asset_config.get('grantType', 'password')
-    client_id = asset_config.get('clientId')
-    client_secret = asset_config.get('secret')
-    username = asset_config.get('username')
-    password = asset_config.get('password')
+    grant_type = local_config.get('grantType', 'password')
+    client_id = local_config.get('clientId')
+    client_secret = local_config.get('secret')
+    username = local_config.get('username')
+    password = local_config.get('password')
     disable_antiforgery_token = \
-        asset_config.get('disableAntiforgeryToken', True)
+        local_config.get('disableAntiforgeryToken', True)
 
     assert grant_type == 'password', (
         'Only Grant Type `password` is supported, '
@@ -121,10 +121,10 @@ async def _query(
         'Property `disableAntiforgeryToken` must be a boolean if provided '
         'in the appliance config')
 
-    address = check_config.get('address') or asset.name
-    verify_ssl = check_config.get('verifySSL', False)
-    port = check_config.get('port', 4443)
-    api_version = check_config.get('apiVersion', 'v8')
+    address = config.get('address') or asset.name
+    verify_ssl = config.get('verifySSL', False)
+    port = config.get('port', 4443)
+    api_version = config.get('apiVersion', 'v8')
 
     assert api_version == 'v8', (
         f'Only API Version 8 is supported (got: {api_version})')
@@ -151,14 +151,14 @@ async def _query(
 
 async def query_multi(
         asset: Asset,
-        asset_config: dict,
-        check_config: dict,
+        local_config: dict,
+        config: dict,
         req: str,
         force_new_token: bool = False) -> list[dict[str, Any]]:
     api_url, api_version, token, verify_ssl, is_new = await _query(
         asset,
-        asset_config,
-        check_config,
+        local_config,
+        config,
         req,
         force_new_token)
 
@@ -182,8 +182,8 @@ async def query_multi(
                     # Retry when using an old token and 401
                     return await query_multi(
                         asset=asset,
-                        asset_config=asset_config,
-                        check_config=check_config,
+                        local_config=local_config,
+                        config=config,
                         req=req,
                         force_new_token=True)
 
@@ -203,14 +203,14 @@ async def query_multi(
 
 async def query(
         asset: Asset,
-        asset_config: dict,
-        check_config: dict,
+        local_config: dict,
+        config: dict,
         req: str,
         force_new_token: bool = False) -> dict[str, Any]:
     api_url, api_version, token, verify_ssl, is_new = await _query(
         asset,
-        asset_config,
-        check_config,
+        local_config,
+        config,
         req,
         force_new_token)
 
@@ -231,8 +231,8 @@ async def query(
                 # Retry when using an old token and 401
                 return await query(
                     asset=asset,
-                    asset_config=asset_config,
-                    check_config=check_config,
+                    local_config=local_config,
+                    config=config,
                     req=req,
                     force_new_token=True)
 
